@@ -1,3 +1,4 @@
+#include "highgui.h"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <vector>
@@ -10,8 +11,7 @@ using std::endl;
 
 const char * window_title = "GuardDog";
 
-const int numberOfSteps = 2;
-cv::Mat images[numberOfSteps-1];
+cv::Mat image;
 std::vector<cv::Mat> frame_split(3);
 std::vector<cv::Mat> reference_split(3);
 
@@ -23,38 +23,46 @@ struct CameraWrapper {
 
 int main ( int argc,char **argv ) {
 	{
-	CameraWrapper cameraWrapper;
-	raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
+		CameraWrapper cameraWrapper;
+		raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
 
-	//set camera params
-	Camera.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
+		//set camera params
+		Camera.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
 
-	//Open camera
-	if (!Camera.open()) {cerr<<"Error opening the camera"<<endl;return -1;}
+		//Open camera
+		if (!Camera.open()) {cerr<<"Error opening the camera"<<endl;return -1;}
 
-	cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
+		cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
 
-	do {
-		Camera.grab();
-		Camera.retrieve(images[0]);
-	} while(cv::waitKey(30) != 32); //first spacebar; get ref image
+		do {
+			Camera.grab();
+			Camera.retrieve(image);
+		} while(cv::waitKey(30) != 32); //first spacebar; get ref image
 
-	cv::split(images[0],reference_split);
+		cv::split(image,reference_split);
+		const int erosion_type = cv::MORPH_RECT;
+		const int erosion_size = 1;
+		cv::Mat erode_brush = cv::getStructuringElement( 	erosion_type,
+                                           				cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
+                                           				cv::Point( erosion_size, erosion_size ) );
 
-	//Start capture
-	do {
-		Camera.grab();
-		Camera.retrieve(images[0]);
+		do {
+			Camera.grab();
+			Camera.retrieve(image);
 
-		cv::split(images[0], frame_split);
-		for(int channel = 0; channel < 3; channel++){
-			cv::absdiff(frame_split.at(channel), reference_split.at(channel), frame_split.at(channel));
-			cv::threshold(frame_split.at(channel), frame_split.at(channel), 15, 255, CV_THRESH_BINARY);
-			merge(frame_split, images[0]);
-		}
+			cv::split(image, frame_split);
+			for(int channel = 0; channel < 3; channel++){
+				cv::absdiff(frame_split.at(channel), reference_split.at(channel), frame_split.at(channel));
 
-		cv::imshow(window_title, images[0]);
-	} while( cv::waitKey(30) != 32 ); //spacebar
+				cv::threshold(frame_split.at(channel), frame_split.at(channel), 155, 255, CV_THRESH_BINARY);
+
+				//cv::erode( frame_split.at(channel), frame_split.at(channel), erode_brush );
+
+				merge(frame_split, image);
+			}
+
+			cv::imshow(window_title, *current_image);
+		} while( cv::waitKey(30) != 32 ); //spacebar
 	}
 
 	return 0;
