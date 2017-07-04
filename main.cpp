@@ -12,58 +12,47 @@ using std::endl;
 const char * window_title = "GuardDog";
 
 cv::Mat image;
-std::vector<cv::Mat> frame_split(3);
-std::vector<cv::Mat> reference_split(3);
 
 struct CameraWrapper {
   CameraWrapper() {}
-  ~CameraWrapper() { cout << "Camera released"; cam.release(); }
+  ~CameraWrapper() { cam.release(); }
 	raspicam::RaspiCam_Cv cam;
 };
 
 int main ( int argc,char **argv ) {
-	{
-		CameraWrapper cameraWrapper;
-		raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
+	CameraWrapper cameraWrapper;
+	raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
 
-		//set camera params
-		Camera.set( CV_CAP_PROP_FORMAT, CV_8UC3 );
+	//set camera params
+	Camera.set( CV_CAP_PROP_FORMAT, CV_8UC1 );
 
-		//Open camera
-		if (!Camera.open()) {cerr<<"Error opening the camera"<<endl;return -1;}
+	//Open camera
+	if (!Camera.open()) {cerr<<"Error opening the camera"<<endl;return -1;}
 
-		cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
+	cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
 
-		do {
-			Camera.grab();
-			Camera.retrieve(image);
-		} while(cv::waitKey(30) != 32); //first spacebar; get ref image
+	cv::Mat reference_image;
+	do {
+		Camera.grab();
+		Camera.retrieve(reference_image);
+	} while(cv::waitKey(30) != 32); //first spacebar; get ref image
 
-		cv::split(image,reference_split);
-		const int erosion_type = cv::MORPH_RECT;
-		const int erosion_size = 1;
-		cv::Mat erode_brush = cv::getStructuringElement( 	erosion_type,
-                                           				cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ),
-                                           				cv::Point( erosion_size, erosion_size ) );
+	do {
+		Camera.grab();
+		Camera.retrieve(image);
 
-		do {
-			Camera.grab();
-			Camera.retrieve(image);
+		cv::absdiff(image, reference_image, image);
 
-			cv::split(image, frame_split);
-			for(int channel = 0; channel < 3; channel++){
-				cv::absdiff(frame_split.at(channel), reference_split.at(channel), frame_split.at(channel));
+		cv::imshow(window_title, image);
 
-				cv::threshold(frame_split.at(channel), frame_split.at(channel), 155, 255, CV_THRESH_BINARY);
+    cv::normalize(image, image, 0, 255, 32, CV_8UC1);
 
-				//cv::erode( frame_split.at(channel), frame_split.at(channel), erode_brush );
+		cv::Scalar m = cv::mean(image);
+    cout << "\r" << m << std::flush;
 
-				merge(frame_split, image);
-			}
+	} while( cv::waitKey(30) != 32 ); //spacebar
 
-			cv::imshow(window_title, *current_image);
-		} while( cv::waitKey(30) != 32 ); //spacebar
-	}
+	cout << endl;
 
 	return 0;
 }
