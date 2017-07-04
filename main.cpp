@@ -19,7 +19,7 @@ struct CameraWrapper {
 	raspicam::RaspiCam_Cv cam;
 };
 
-int main ( int argc,char **argv ) {
+int main ( /*int argc,char **argv*/ ) {
 	CameraWrapper cameraWrapper;
 	raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
 
@@ -37,6 +37,16 @@ int main ( int argc,char **argv ) {
 		Camera.retrieve(reference_image);
 	} while(cv::waitKey(30) != 32); //first spacebar; get ref image
 
+	unsigned int frame_num = 0;
+	float diff_value;
+	bool recording = true;
+
+	cout << reference_image.size() << endl;
+	int videoCodec = CV_FOURCC('D','I','V','X');
+	double fps = 30;
+	cv::VideoWriter outputVideo("output.avi", videoCodec, fps, reference_image.size(), true);
+	if(!outputVideo.isOpened()) {cerr<<"ERROR: Failed to write the video"<<endl;return -1;}
+
 	do {
 		Camera.grab();
 		Camera.retrieve(image);
@@ -48,9 +58,17 @@ int main ( int argc,char **argv ) {
     cv::normalize(image, image, 0, 255, 32, CV_8UC1);
 
 		cv::Scalar m = cv::mean(image);
-    cout << "\r" << m << std::flush;
+		diff_value = m[0];
+		if( frame_num % 10 == 0 ){
+    	cout << "\rDiff: " << diff_value << std::flush;
+    }
 
+		outputVideo.write(image);
+
+    ++frame_num;
 	} while( cv::waitKey(30) != 32 ); //spacebar
+
+	outputVideo.release();
 
 	cout << endl;
 
