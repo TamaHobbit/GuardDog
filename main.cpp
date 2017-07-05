@@ -5,6 +5,8 @@
 #include <ctime>
 #include <iostream>
 #include <raspicam/raspicam_cv.h>
+#include <iomanip>
+#include <sstream>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -18,6 +20,14 @@ struct CameraWrapper {
   ~CameraWrapper() { cam.release(); }
 	raspicam::RaspiCam_Cv cam;
 };
+
+void saveImage(const cv::Mat & frame){
+	std::ostringstream imageName;
+	std::time_t t = std::time(nullptr);
+	auto tm = *std::localtime(&t);
+	imageName << std::put_time(&tm, "../images/%d-%m-%Y_%H-%M-%S.jpg");
+	cv::imwrite( imageName.str(), frame );
+}
 
 int main ( /*int argc,char **argv*/ ) {
 	CameraWrapper cameraWrapper;
@@ -57,8 +67,9 @@ int main ( /*int argc,char **argv*/ ) {
     	cout << "\rDiff: " << diff_value << std::flush;
     }
 
-    if( diff_value > 30.0f ){
+    if( diff_value > 20.0f ){
 			cv::imshow(window_title, image);
+			saveImage(image);
 		} else {
 			cv::imshow(window_title, grayscaled_image);
 		}
