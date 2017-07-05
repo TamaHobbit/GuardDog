@@ -5,8 +5,6 @@
 #include <ctime>
 #include <iostream>
 #include <raspicam/raspicam_cv.h>
-#include <iomanip>
-#include <sstream>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -22,11 +20,13 @@ struct CameraWrapper {
 };
 
 void saveImage(const cv::Mat & frame){
-	std::ostringstream imageName;
-	std::time_t t = std::time(nullptr);
-	auto tm = *std::localtime(&t);
-	imageName << std::put_time(&tm, "../images/%d-%m-%Y_%H-%M-%S.jpg");
-	cv::imwrite( imageName.str(), frame );
+	std::time_t t = std::time(NULL);
+	char mbstr[100];
+	if (std::strftime(mbstr, sizeof(mbstr), "../images/%d-%m-%Y_%H_%M_%S.jpg", std::localtime(&t))) {
+		cv::imwrite( mbstr, frame );
+	} else {
+		cerr << "Unable to write image." << endl;
+	}
 }
 
 int main ( /*int argc,char **argv*/ ) {
