@@ -59,8 +59,9 @@ int main ( /*int argc,char **argv*/ ) {
 	cv::Mat reference_image; // grayscaled, last image in stabilization phase
 
 	// allow camera image to stabilize; grab two images and compare to establish mean_singleframe_diff
-	const int stabilize_frames = 100;
-	for(int i = 0; i < stabilize_frames; ++i) {
+	const int stabilize_frames = 50;
+	const int throwaway_frames = 10;
+	for(int i = 0; i < stabilize_frames + throwaway_frames; ++i) {
 		cv::Mat image, previous_frame;
 
 		Camera.grab();
@@ -73,11 +74,12 @@ int main ( /*int argc,char **argv*/ ) {
 		Camera.retrieve(image);
 		cv::cvtColor(image, reference_image, CV_BGR2GRAY);
 
-		cv::absdiff(previous_frame, reference_image, previous_frame);
-		float diff = cv::mean(previous_frame)[0];
-		mean_singleframe_diff += diff / stabilize_frames;
-
-		cout << "\rStabilizing: " << std::fixed << std::setprecision(3) << diff << " -> " << mean_singleframe_diff << std::flush;
+		if( i > throwaway_frames ){
+			cv::absdiff(previous_frame, reference_image, previous_frame);
+			float diff = cv::mean(previous_frame)[0];
+			mean_singleframe_diff += diff / stabilize_frames;
+			cout << "\rStabilizing: " << std::fixed << std::setprecision(3) << diff << " -> " << mean_singleframe_diff << std::flush;
+		}
 		cv::waitKey(1); // need to wait the same as in main phase
 	}
 
