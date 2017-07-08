@@ -37,18 +37,18 @@ int main ( int argc,char **argv ) {
 		Camera.retrieve(reference_image);
 	} while(cv::waitKey(30) != 32); //first spacebar; get ref image
 
+	cv::Mat new_ref;
 	do {
 		Camera.grab();
-		Camera.retrieve(image);
+		Camera.retrieve(new_ref);
 
-		cv::absdiff(image, reference_image, image);
+		cv::absdiff(new_ref, reference_image, image);
+		reference_image = new_ref.clone();
 
 		cv::imshow(window_title, image);
 
-    cv::normalize(image, image, 0, 255, 32, CV_8UC1);
-
 		cv::Scalar m = cv::mean(image);
-    cout << "\r" << m << std::flush;
+    cout << "\r" << m[0] << std::flush;
 
 	} while( cv::waitKey(30) != 32 ); //spacebar
 
