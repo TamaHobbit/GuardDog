@@ -37,10 +37,14 @@ int main ( int argc,char **argv ) {
 		Camera.retrieve(reference_image);
 	} while(cv::waitKey(30) != 32); //first spacebar; get ref image
 
+	const float IM_SCALE = 0.05f;
+	resize(reference_image, reference_image, cv::Size(), IM_SCALE, IM_SCALE, cv::INTER_AREA);
+
 	cv::Mat new_ref;
 	do {
 		Camera.grab();
 		Camera.retrieve(new_ref);
+		resize(new_ref, new_ref, cv::Size(), IM_SCALE, IM_SCALE, cv::INTER_AREA);
 
 		cv::absdiff(new_ref, reference_image, image);
 		reference_image = new_ref.clone();
