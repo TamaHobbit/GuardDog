@@ -7,6 +7,8 @@
 #include <raspicam/raspicam_cv.h>
 #include <unistd.h>
 #include <iomanip>
+#include <fstream>
+#include <string>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -43,6 +45,27 @@ void writeImages(){
 	writeQueue.clear();
 }
 
+std::string diffdata_buffer;
+std::ofstream diffdata_file("data.txt");
+
+void flushData(){
+	diffdata_file.write(diffdata_buffer.data(), diffdata_buffer.size());
+	diffdata_buffer.clear();
+}
+
+void add_timestamp(){
+	std::time_t t = std::time(NULL);
+	char mbstr[20];
+	std::strftime(mbstr, sizeof(mbstr), "%d-%m-%Y_%H_%M_%S", std::localtime(&t)); //ignore returnval; potential failure
+	diffdata_buffer.append(mbstr);
+	diffdata_buffer.append("\n");
+}
+
+void add_data(float value){
+	diffdata_buffer.append( std::to_string(value) );
+	diffdata_buffer.append("\n");
+}
+
 int main ( /*int argc,char **argv*/ ) {
 	CameraWrapper cameraWrapper;
 	raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
@@ -57,6 +80,9 @@ int main ( /*int argc,char **argv*/ ) {
 
 	float mean_singleframe_diff = 0; // the mean difference between one frame and the next
 	cv::Mat reference_image; // grayscaled, last image in stabilization phase
+
+	add_timestamp();
+	flushData();
 
 	// allow camera image to stabilize; grab two images and compare to establish mean_singleframe_diff
 	const int stabilize_frames = 50;
@@ -79,6 +105,7 @@ int main ( /*int argc,char **argv*/ ) {
 			float diff = cv::mean(previous_frame)[0];
 			mean_singleframe_diff += diff / stabilize_frames;
 			cout << "\rStabilizing: " << std::fixed << std::setprecision(3) << diff << " -> " << mean_singleframe_diff << std::flush;
+			add_data(diff);
 		}
 		cv::waitKey(1); // need to wait the same as in main phase
 	}
@@ -113,6 +140,11 @@ int main ( /*int argc,char **argv*/ ) {
 
 		cv::absdiff(previous_frame, reference_image, previous_frame);
 		float diff = cv::mean(previous_frame)[0];
+		add_data(diff);
+		if( frame_num % 50 == 0 ){
+			flushData();
+			add_timestamp();
+		}
 
 		// ratio between this diff and stable diff, >= 1
 		float ratio = diff > mean_singleframe_diff ? diff / mean_singleframe_diff : mean_singleframe_diff / diff;
