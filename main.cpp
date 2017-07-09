@@ -112,7 +112,7 @@ int main ( /*int argc,char **argv*/ ) {
 
 	cout << endl << "Starting..." << endl;
 
-	const float max_diff_ratio = 1.1f;
+	const float max_diff_ratio = mean_singleframe_diff * 1.1f;
 
 	// we're going to record from the first interesting frame for at least movement_record_lagg frames
 	unsigned int frame_num = 0;
@@ -146,15 +146,10 @@ int main ( /*int argc,char **argv*/ ) {
 			add_timestamp();
 		}
 
-		// ratio between this diff and stable diff, >= 1
-		float ratio = diff > mean_singleframe_diff ? diff / mean_singleframe_diff : mean_singleframe_diff / diff;
-
 		cout << "\rDiff: " << std::fixed << std::setprecision(3) << diff << " : " \
-			   << std::fixed << std::setprecision(3) << mean_singleframe_diff \
-			   << " = " << std::fixed << std::setprecision(3) << ratio << "/" \
 			   << std::fixed << std::setprecision(3) << max_diff_ratio << std::flush;
 
-		if( ratio > max_diff_ratio ){
+		if( diff > max_diff_ratio ){
     	recording = true;
     	last_record_frame = frame_num;
     } else if ( last_record_frame + movement_record_lagg > frame_num ){
