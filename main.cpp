@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <fstream>
 #include <string>
+#include <queue>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -87,6 +88,8 @@ int main ( /*int argc,char **argv*/ ) {
 	// allow camera image to stabilize; grab two images and compare to establish mean_singleframe_diff
 	const int stabilize_frames = 50;
 	const int throwaway_frames = 10;
+	std::queue<float> last_non_outliers;
+
 	for(int i = 0; i < stabilize_frames + throwaway_frames; ++i) {
 		cv::Mat image, previous_frame;
 
@@ -100,19 +103,23 @@ int main ( /*int argc,char **argv*/ ) {
 		Camera.retrieve(image);
 		cv::cvtColor(image, reference_image, CV_BGR2GRAY);
 
-		if( i > throwaway_frames ){
+		if( i >= throwaway_frames ){
 			cv::absdiff(previous_frame, reference_image, previous_frame);
 			float diff = cv::mean(previous_frame)[0];
 			mean_singleframe_diff += diff / stabilize_frames;
 			cout << "\rStabilizing: " << std::fixed << std::setprecision(3) << diff << " -> " << mean_singleframe_diff << std::flush;
 			add_data(diff);
+			last_non_outliers.push(diff); //assuming initial stabilization frames are never outliers!
 		}
 		cv::waitKey(1); // need to wait the same as in main phase
 	}
 
+	assert(last_non_outliers.size() == stabilize_frames);
+
 	cout << endl << "Starting..." << endl;
 
-	const float max_diff_ratio = mean_singleframe_diff * 1.1f;
+	const float max_diff_ratio = 1.1f;
+	float max_diff = mean_singleframe_diff * max_diff_ratio;
 
 	// we're going to record from the first interesting frame for at least movement_record_lagg frames
 	unsigned int frame_num = 0;
@@ -146,16 +153,23 @@ int main ( /*int argc,char **argv*/ ) {
 			add_timestamp();
 		}
 
-		cout << "\rDiff: " << std::fixed << std::setprecision(3) << diff << " : " \
-			   << std::fixed << std::setprecision(3) << max_diff_ratio << std::flush;
-
-		if( diff > max_diff_ratio ){
+		if( diff > max_diff ){
     	recording = true;
     	last_record_frame = frame_num;
     } else if ( last_record_frame + movement_record_lagg > frame_num ){
     	// if movement_record_lagg is zero, this is always true and we stop recording at the first uninteresting frame
     	recording = false;
+    	// update average diff of last [stabilize_frames] uninteresting frames
+			float discard = last_non_outliers.front();
+			last_non_outliers.pop();
+			last_non_outliers.push(diff);
+			mean_singleframe_diff -= discard / stabilize_frames;
+			mean_singleframe_diff += diff / stabilize_frames;
+			max_diff = mean_singleframe_diff * max_diff_ratio;
 		}
+
+		cout << "\rDiff: " << std::fixed << std::setprecision(3) << diff << " : " \
+			   << std::fixed << std::setprecision(3) << max_diff << std::flush;
 
 		++frame_num;
 		if( cv::waitKey(1) == 32 ){ // press spacebar to stop
