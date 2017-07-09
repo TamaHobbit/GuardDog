@@ -1,6 +1,6 @@
 # This makefile takes all .raw files, turns them into .num (which has frame numbers and no dates), then plots them with gnuplot
 
-%.svg: %.raw
+%.svg: %.raw plotdata.gnuplot
 	cat $< | ./stripdates | ./addnr > gnuplotinput.txt
 	gnuplot plotdata.gnuplot
 	mv gnuplotoutput.svg $@
