@@ -14,7 +14,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-const char * window_title = "GuardDog";
+//const char * window_title = "GuardDog";
 
 struct CameraWrapper {
   CameraWrapper() {}
@@ -24,10 +24,20 @@ struct CameraWrapper {
 
 std::vector<cv::Mat> writeQueue;
 
-std::string getTimeStamp(){
+std::string TimeStampImagename(){
 	std::time_t t = std::time(NULL);
 	char mbstr[100];
 	if (std::strftime(mbstr, sizeof(mbstr), "../images/%d-%m-%Y_%H_%M_%S.jpg", std::localtime(&t))) {
+		return std::string(mbstr);
+	} else {
+		return "foo";
+	}
+}
+
+std::string TimeStampDatafileName(){
+	std::time_t t = std::time(NULL);
+	char mbstr[100];
+	if (std::strftime(mbstr, sizeof(mbstr), "../data/%d-%m-%Y_%H_%M_%S.raw", std::localtime(&t))) {
 		return std::string(mbstr);
 	} else {
 		return "foo";
@@ -40,14 +50,14 @@ void saveImage(const cv::Mat & frame){
 
 void writeImages(){
 	if( writeQueue.empty() ){ return; }
-	auto name = getTimeStamp();
+	auto name = TimeStampImagename();
 	auto it = writeQueue.begin() + writeQueue.size()/2;
 	cv::imwrite(name, *it);
 	writeQueue.clear();
 }
 
 std::string diffdata_buffer;
-std::ofstream diffdata_file("data.txt");
+std::ofstream diffdata_file(TimeStampDatafileName());
 
 void flushData(){
 	diffdata_file.write(diffdata_buffer.data(), diffdata_buffer.size());
@@ -77,7 +87,7 @@ int main ( /*int argc,char **argv*/ ) {
 	//Open camera
 	if (!Camera.open()) {cerr<<"Error opening the camera"<<endl;return -1;}
 
-	cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
+	//cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
 
 	float mean_singleframe_diff = 0; // the mean difference between one frame and the next
 	cv::Mat reference_image; // grayscaled, last image in stabilization phase
@@ -97,7 +107,7 @@ int main ( /*int argc,char **argv*/ ) {
 		Camera.retrieve(previous_frame);
 		cv::cvtColor(previous_frame, previous_frame, CV_BGR2GRAY);
 
-		cv::imshow(window_title, previous_frame);
+		//cv::imshow(window_title, previous_frame);
 
 		Camera.grab();
 		Camera.retrieve(image);
@@ -134,11 +144,11 @@ int main ( /*int argc,char **argv*/ ) {
 		Camera.grab();
 		Camera.retrieve(previous_frame);
 		if( recording ){
-			cv::imshow(window_title, previous_frame);
+			//cv::imshow(window_title, previous_frame);
 		}
 		cv::cvtColor(previous_frame, previous_frame, CV_BGR2GRAY);
 		if( !recording ){
-			cv::imshow(window_title, previous_frame);
+			//cv::imshow(window_title, previous_frame);
 		}
 
 		Camera.grab();
