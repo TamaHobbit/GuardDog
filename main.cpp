@@ -22,9 +22,9 @@ struct CameraWrapper {
 	raspicam::RaspiCam_Cv cam;
 };
 
-std::vector<std::pair<std::string,cv::Mat> > writeQueue;
+std::vector<cv::Mat> writeQueue;
 
-std::string getImageNameNow(){
+std::string getTimeStamp(){
 	std::time_t t = std::time(NULL);
 	char mbstr[100];
 	if (std::strftime(mbstr, sizeof(mbstr), "../images/%d-%m-%Y_%H_%M_%S.jpg", std::localtime(&t))) {
@@ -35,14 +35,14 @@ std::string getImageNameNow(){
 }
 
 void saveImage(const cv::Mat & frame){
-	auto name = getImageNameNow();
-	writeQueue.push_back(std::make_pair(name, frame.clone()));
+	writeQueue.push_back(frame.clone());
 }
 
 void writeImages(){
-	for(auto it : writeQueue){
-		cv::imwrite(it.first,it.second);
-	}
+	if( writeQueue.empty() ){ return; }
+	auto name = getTimeStamp();
+	auto it = writeQueue.begin() + writeQueue.size()/2;
+	cv::imwrite(name, *it);
 	writeQueue.clear();
 }
 
@@ -156,9 +156,11 @@ int main ( /*int argc,char **argv*/ ) {
 		if( diff > max_diff ){
     	recording = true;
     	last_record_frame = frame_num;
+    	saveImage(image);
     } else if ( last_record_frame + movement_record_lagg > frame_num ){
     	// if movement_record_lagg is zero, this is always true and we stop recording at the first uninteresting frame
     	recording = false;
+    	writeImages();
     	// update average diff of last [stabilize_frames] uninteresting frames
 			float discard = last_non_outliers.front();
 			last_non_outliers.pop();
