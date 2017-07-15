@@ -1,6 +1,7 @@
 <html>
 <head>
 <link rel="stylesheet" type="text/css" href="css/style.css">
+<meta http-equiv="refresh" content="30"> <!-- refresh page automatically -->
 </head>
 <body>
 
@@ -12,28 +13,35 @@ function getImages($dir){
 		$dir = $docRoot . $dir;
 		$fullFilenames = glob($dir.'*');
 		foreach($fullFilenames as $fullFilename){
-			$result[] = substr($fullFilename, strlen($docRoot));
+			$time = filemtime($fullFilename);
+			if( $time <= (time() - 3600 * 24)){
+				continue;//ignore older files
+			}
+			$result[] = array(
+				'file' => substr($fullFilename, strlen($docRoot)),
+				'date' => date ("d F H:i:s", $time),
+			);
 		}
-		return $result;
+		return array_reverse($result);
 }
 
-echo '<div class=imagecollection>';
-echo "<h2>Past hourly pictures</h2>";
-$hourly_images = getImages("GuardDog/images/hourly/");
-foreach($hourly_images as $img) {
-  echo '<img class="photo grow" src="' . $img . '" />';
+function printImageCollection($dir, $title){
+	echo '<div class=imagecollection>';
+	echo "<h2>$title</h2>";
+	$images = getImages($dir);
+	foreach($images as $img) {
+		echo '<a href="' . $img['file'] . '">';
+		echo '<div class="photo grow">';
+  	echo '<img src="' . $img['file'] . '" />';
+		echo "<div class='desc'>{$img['date']}</div>";
+		echo '</div>';
+		echo '</a>';
+	}
+	echo '</div>';
 }
-echo '</div>';
 
-echo "<br />";
-
-echo '<div class=imagecollection>';
-echo "<h2>Recent events</h2>";
-$images = getImages("GuardDog/images/events/");
-foreach($images as $img) {
-  echo '<img class="photo grow" src="' . $img . '" />';
-}
-echo '</div>';
+printImageCollection("GuardDog/images/hourly/", "Past hourly pictures");
+printImageCollection("GuardDog/images/events/", "Recent events");
 
 ?>
 
