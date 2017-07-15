@@ -1,0 +1,14 @@
+.photo {
+  width: 200px;
+  height: 200px;
+  margin: 0.5em;
+  padding: 1em;
+  font-size: 10px;
+}
+
+.grow { transition: all .2s ease-in-out; }
+.grow:hover { transform: scale(1.2); }
+
+.imagecollection {
+	border: 1px solid #ccc;
+}
