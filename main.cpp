@@ -10,6 +10,7 @@
 #include <fstream>
 #include <string>
 #include <queue>
+#include <chrono>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -24,24 +25,35 @@ struct CameraWrapper {
 
 std::vector<cv::Mat> writeQueue;
 
-std::string TimeStampImagename(){
+std::string getTimestamp(){
 	std::time_t t = std::time(NULL);
-	char mbstr[100];
-	if (std::strftime(mbstr, sizeof(mbstr), "../images/%d-%m-%Y_%H_%M_%S.jpg", std::localtime(&t))) {
+	char mbstr[20];
+	if (std::strftime(mbstr, sizeof(mbstr), "%d-%m-%Y_%H_%M_%S", std::localtime(&t))) {
 		return std::string(mbstr);
 	} else {
-		return "foo";
+		return "unknown_time";
 	}
 }
 
-std::string TimeStampDatafileName(){
-	std::time_t t = std::time(NULL);
-	char mbstr[100];
-	if (std::strftime(mbstr, sizeof(mbstr), "../data/%d-%m-%Y_%H_%M_%S.raw", std::localtime(&t))) {
-		return std::string(mbstr);
-	} else {
-		return "foo";
-	}
+std::string getDataFilename(){
+	auto timestamp = getTimestamp();
+	std::ostringstream ss;
+	ss << "../data/" << getTimestamp() << ".raw";
+	return ss.str();
+}
+
+std::string getEventFilename(){
+	auto timestamp = getTimestamp();
+	std::ostringstream ss;
+	ss << "../images/events/" << getTimestamp() << ".jpg";
+	return ss.str();
+}
+
+std::string getHourlyImageFilename(){
+	auto timestamp = getTimestamp();
+	std::ostringstream ss;
+	ss << "../images/hourly/" << getTimestamp() << ".jpg";
+	return ss.str();
 }
 
 void saveImage(const cv::Mat & frame){
@@ -50,14 +62,14 @@ void saveImage(const cv::Mat & frame){
 
 void writeImages(){
 	if( writeQueue.empty() ){ return; }
-	auto name = TimeStampImagename();
+	auto name = getEventFilename();
 	auto it = writeQueue.begin() + writeQueue.size()/2;
 	cv::imwrite(name, *it);
 	writeQueue.clear();
 }
 
 std::string diffdata_buffer;
-std::ofstream diffdata_file(TimeStampDatafileName());
+std::ofstream diffdata_file(getDataFilename());
 
 void flushData(){
 	diffdata_file.write(diffdata_buffer.data(), diffdata_buffer.size());
@@ -137,6 +149,9 @@ int main ( /*int argc,char **argv*/ ) {
 	unsigned int last_record_frame = 0;
 	const unsigned int movement_record_lagg = 2;
 
+	const std::chrono::hours image_period(1);
+	auto last_periodic_image = std::chrono::steady_clock::now() - image_period;
+
 	// main phase
 	while(true){
 		cv::Mat image, previous_frame;
@@ -161,6 +176,13 @@ int main ( /*int argc,char **argv*/ ) {
 		if( frame_num % 50 == 0 ){
 			flushData();
 			add_timestamp();
+
+			auto now = std::chrono::steady_clock::now();
+			std::chrono::duration<double> diff = now - last_periodic_image;
+			if( diff > image_period ){
+				last_periodic_image = now;
+				cv::imwrite(getHourlyImageFilename(), image);
+			}
 		}
 
 		if( diff > max_diff ){
