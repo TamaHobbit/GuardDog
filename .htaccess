@@ -1,4 +1,4 @@
 AuthType Basic
 AuthName "Have you tried asking nicely?"
-AuthUserFile /var/www/html/.htpasswd
+AuthUserFile /home/pi/code/php/guard/.htpasswd
 Require valid-user
