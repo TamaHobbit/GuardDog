@@ -7,11 +7,14 @@
 #include <raspicam/raspicam_cv.h>
 #include <unistd.h>
 #include <iomanip>
+#include <fstream>
+#include <string>
+#include <queue>
 using std::cout;
 using std::cerr;
 using std::endl;
 
-const char * window_title = "GuardDog";
+//const char * window_title = "GuardDog";
 
 struct CameraWrapper {
   CameraWrapper() {}
@@ -19,9 +22,9 @@ struct CameraWrapper {
 	raspicam::RaspiCam_Cv cam;
 };
 
-std::vector<std::pair<std::string,cv::Mat> > writeQueue;
+std::vector<cv::Mat> writeQueue;
 
-std::string getImageNameNow(){
+std::string TimeStampImagename(){
 	std::time_t t = std::time(NULL);
 	char mbstr[100];
 	if (std::strftime(mbstr, sizeof(mbstr), "../images/%d-%m-%Y_%H_%M_%S.jpg", std::localtime(&t))) {
@@ -31,16 +34,47 @@ std::string getImageNameNow(){
 	}
 }
 
+std::string TimeStampDatafileName(){
+	std::time_t t = std::time(NULL);
+	char mbstr[100];
+	if (std::strftime(mbstr, sizeof(mbstr), "../data/%d-%m-%Y_%H_%M_%S.raw", std::localtime(&t))) {
+		return std::string(mbstr);
+	} else {
+		return "foo";
+	}
+}
+
 void saveImage(const cv::Mat & frame){
-	auto name = getImageNameNow();
-	writeQueue.push_back(std::make_pair(name, frame.clone()));
+	writeQueue.push_back(frame.clone());
 }
 
 void writeImages(){
-	for(auto it : writeQueue){
-		cv::imwrite(it.first,it.second);
-	}
+	if( writeQueue.empty() ){ return; }
+	auto name = TimeStampImagename();
+	auto it = writeQueue.begin() + writeQueue.size()/2;
+	cv::imwrite(name, *it);
 	writeQueue.clear();
+}
+
+std::string diffdata_buffer;
+std::ofstream diffdata_file(TimeStampDatafileName());
+
+void flushData(){
+	diffdata_file.write(diffdata_buffer.data(), diffdata_buffer.size());
+	diffdata_buffer.clear();
+}
+
+void add_timestamp(){
+	std::time_t t = std::time(NULL);
+	char mbstr[20];
+	std::strftime(mbstr, sizeof(mbstr), "%d-%m-%Y_%H_%M_%S", std::localtime(&t)); //ignore returnval; potential failure
+	diffdata_buffer.append(mbstr);
+	diffdata_buffer.append("\n");
+}
+
+void add_data(float value){
+	diffdata_buffer.append( std::to_string(value) );
+	diffdata_buffer.append("\n");
 }
 
 int main ( /*int argc,char **argv*/ ) {
@@ -53,14 +87,19 @@ int main ( /*int argc,char **argv*/ ) {
 	//Open camera
 	if (!Camera.open()) {cerr<<"Error opening the camera"<<endl;return -1;}
 
-	cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
+	//cv::namedWindow(window_title,1); //0 required for FULLSCREEN, 1 is normal (autosize)
 
 	float mean_singleframe_diff = 0; // the mean difference between one frame and the next
 	cv::Mat reference_image; // grayscaled, last image in stabilization phase
 
+	add_timestamp();
+	flushData();
+
 	// allow camera image to stabilize; grab two images and compare to establish mean_singleframe_diff
 	const int stabilize_frames = 50;
 	const int throwaway_frames = 10;
+	std::queue<float> last_non_outliers;
+
 	for(int i = 0; i < stabilize_frames + throwaway_frames; ++i) {
 		cv::Mat image, previous_frame;
 
@@ -68,24 +107,29 @@ int main ( /*int argc,char **argv*/ ) {
 		Camera.retrieve(previous_frame);
 		cv::cvtColor(previous_frame, previous_frame, CV_BGR2GRAY);
 
-		cv::imshow(window_title, previous_frame);
+		//cv::imshow(window_title, previous_frame);
 
 		Camera.grab();
 		Camera.retrieve(image);
 		cv::cvtColor(image, reference_image, CV_BGR2GRAY);
 
-		if( i > throwaway_frames ){
+		if( i >= throwaway_frames ){
 			cv::absdiff(previous_frame, reference_image, previous_frame);
 			float diff = cv::mean(previous_frame)[0];
 			mean_singleframe_diff += diff / stabilize_frames;
 			cout << "\rStabilizing: " << std::fixed << std::setprecision(3) << diff << " -> " << mean_singleframe_diff << std::flush;
+			add_data(diff);
+			last_non_outliers.push(diff); //assuming initial stabilization frames are never outliers!
 		}
 		cv::waitKey(1); // need to wait the same as in main phase
 	}
 
+	assert(last_non_outliers.size() == stabilize_frames);
+
 	cout << endl << "Starting..." << endl;
 
 	const float max_diff_ratio = 1.1f;
+	float max_diff = mean_singleframe_diff * max_diff_ratio;
 
 	// we're going to record from the first interesting frame for at least movement_record_lagg frames
 	unsigned int frame_num = 0;
@@ -100,11 +144,11 @@ int main ( /*int argc,char **argv*/ ) {
 		Camera.grab();
 		Camera.retrieve(previous_frame);
 		if( recording ){
-			cv::imshow(window_title, previous_frame);
+			//cv::imshow(window_title, previous_frame);
 		}
 		cv::cvtColor(previous_frame, previous_frame, CV_BGR2GRAY);
 		if( !recording ){
-			cv::imshow(window_title, previous_frame);
+			//cv::imshow(window_title, previous_frame);
 		}
 
 		Camera.grab();
@@ -113,22 +157,31 @@ int main ( /*int argc,char **argv*/ ) {
 
 		cv::absdiff(previous_frame, reference_image, previous_frame);
 		float diff = cv::mean(previous_frame)[0];
+		add_data(diff);
+		if( frame_num % 50 == 0 ){
+			flushData();
+			add_timestamp();
+		}
 
-		// ratio between this diff and stable diff, >= 1
-		float ratio = diff > mean_singleframe_diff ? diff / mean_singleframe_diff : mean_singleframe_diff / diff;
-
-		cout << "\rDiff: " << std::fixed << std::setprecision(3) << diff << " : " \
-			   << std::fixed << std::setprecision(3) << mean_singleframe_diff \
-			   << " = " << std::fixed << std::setprecision(3) << ratio << "/" \
-			   << std::fixed << std::setprecision(3) << max_diff_ratio << std::flush;
-
-		if( ratio > max_diff_ratio ){
+		if( diff > max_diff ){
     	recording = true;
     	last_record_frame = frame_num;
+    	saveImage(image);
     } else if ( last_record_frame + movement_record_lagg > frame_num ){
     	// if movement_record_lagg is zero, this is always true and we stop recording at the first uninteresting frame
     	recording = false;
+    	writeImages();
+    	// update average diff of last [stabilize_frames] uninteresting frames
+			float discard = last_non_outliers.front();
+			last_non_outliers.pop();
+			last_non_outliers.push(diff);
+			mean_singleframe_diff -= discard / stabilize_frames;
+			mean_singleframe_diff += diff / stabilize_frames;
+			max_diff = mean_singleframe_diff * max_diff_ratio;
 		}
+
+		cout << "\rDiff: " << std::fixed << std::setprecision(3) << diff << " : " \
+			   << std::fixed << std::setprecision(3) << max_diff << std::flush;
 
 		++frame_num;
 		if( cv::waitKey(1) == 32 ){ // press spacebar to stop
