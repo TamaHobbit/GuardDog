@@ -11,6 +11,8 @@
 #include <string>
 #include <queue>
 #include <chrono>
+#include <cstdlib>
+#include <sstream>
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -35,24 +37,26 @@ std::string getTimestamp(){
 	}
 }
 
+char * logging_dir;
+
 std::string getDataFilename(){
 	auto timestamp = getTimestamp();
 	std::ostringstream ss;
-	ss << "../data/" << getTimestamp() << ".raw";
+	ss << logging_dir << "/data/" << getTimestamp() << ".raw";
 	return ss.str();
 }
 
 std::string getEventFilename(){
 	auto timestamp = getTimestamp();
 	std::ostringstream ss;
-	ss << "../images/events/" << getTimestamp() << ".jpg";
+	ss << logging_dir << "/images/events/" << getTimestamp() << ".jpg";
 	return ss.str();
 }
 
 std::string getHourlyImageFilename(){
 	auto timestamp = getTimestamp();
 	std::ostringstream ss;
-	ss << "../images/hourly/" << getTimestamp() << ".jpg";
+	ss << logging_dir << "/images/hourly/" << getTimestamp() << ".jpg";
 	return ss.str();
 }
 
@@ -89,7 +93,17 @@ void add_data(float value){
 	diffdata_buffer.append("\n");
 }
 
-int main ( /*int argc,char **argv*/ ) {
+int main ( int argc, char **argv ) {
+	logging_dir = argv[1];
+	unsigned int movement_record_lagg;
+	std::istringstream s2(argv[2]);
+	if (!(s2 >> movement_record_lagg))
+    cerr << "Invalid number " << argv[2] << '\n';
+	float max_diff_ratio;
+	std::istringstream s3(argv[3]);
+	if (!(s3 >> max_diff_ratio))
+    cerr << "Invalid number " << argv[3] << '\n';
+
 	CameraWrapper cameraWrapper;
 	raspicam::RaspiCam_Cv & Camera = cameraWrapper.cam;
 
@@ -140,14 +154,12 @@ int main ( /*int argc,char **argv*/ ) {
 
 	cout << endl << "Starting..." << endl;
 
-	const float max_diff_ratio = 1.1f;
 	float max_diff = mean_singleframe_diff * max_diff_ratio;
 
 	// we're going to record from the first interesting frame for at least movement_record_lagg frames
 	unsigned int frame_num = 0;
 	bool recording = false;
 	unsigned int last_record_frame = 0;
-	const unsigned int movement_record_lagg = 2;
 
 	const std::chrono::hours image_period(1);
 	auto last_periodic_image = std::chrono::steady_clock::now() - image_period;
