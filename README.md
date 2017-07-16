@@ -11,8 +11,7 @@ sudo apt-get install apache2 php5
 Git clone this repository into /var/www/html like so:
 
 ```
-cd /var/www
-sudo rm -r html
+cd ~
 sudo git clone git@gitlab.com:Tama/guard.git html
 ```
 
