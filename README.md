@@ -3,7 +3,7 @@
 Install a server with php, for example on raspberry pi Jessie:
 
 ```
-sudo apt-get install apache2 php5
+sudo apt-get install apache2 php5 gnuplot cmake
 ```
 
 # Clone
@@ -43,4 +43,6 @@ Edit /etc/apache2/apache2.conf:
 search for "<Directory /var/www/>", change that to "<Directory /home/pi/guard/>"
 change AllowOverride to "All" instead of "None", so that the .htaccess and .htpasswd files are used
 ```
+
+Edit /etc/apache2/sites-available/000-default.conf, also to change the Directory to /home/pi/guard/.
 
