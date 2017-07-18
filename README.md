@@ -3,7 +3,7 @@
 Install a server with php, for example on raspberry pi Jessie:
 
 ```
-sudo apt-get install apache2 php5 gnuplot cmake
+sudo apt-get install git build-essential apache2 php5 gnuplot cmake
 ```
 
 # Clone
@@ -13,20 +13,11 @@ Git clone this repository to where you will host the website:
 ```
 cd ~
 git clone git@gitlab.com:Tama/guard.git
-git submodule update --init
 ```
 
 # Build GuardDog
 
-See the GuardDog's README.
-
-```
-cd guard/GuardDog
-mkdir build
-cd build
-cmake ..
-make
-```
+Follow GuardDog's README.
 
 # Install the service that starts GuardDog on boot
 
