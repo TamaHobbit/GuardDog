@@ -3,6 +3,8 @@
 Install a server with php, for example on raspberry pi Jessie:
 
 ```
+sudo apt-get update
+sudo apt-get upgrade
 sudo apt-get install git build-essential apache2 php5 gnuplot cmake
 ```
 
@@ -17,7 +19,7 @@ git clone git@gitlab.com:Tama/guard.git
 
 # Build GuardDog
 
-Follow GuardDog's README.
+Follow [GuardDog's README.](https://github.com/TamaHobbit/GuardDog/blob/master/GuardDog/README.md)
 
 # Install the service that starts GuardDog on boot
 
