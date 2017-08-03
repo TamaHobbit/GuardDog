@@ -25,7 +25,7 @@ Follow [GuardDog's README.](https://github.com/TamaHobbit/GuardDog/blob/master/G
 
 ```
 sudo cp service /etc/init.d/guarddog
-sudo update-rc.d NameOfYourScript defaults
+sudo update-rc.d guarddog defaults
 ```
 
 # Configure access
