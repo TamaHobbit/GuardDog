@@ -38,4 +38,3 @@ change AllowOverride to "All" instead of "None", so that the .htaccess and .htpa
 ```
 
 Edit /etc/apache2/sites-available/000-default.conf, also to change the Directory to /home/pi/guard/.
-
