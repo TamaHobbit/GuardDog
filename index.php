@@ -14,9 +14,6 @@ function getImages($dir){
 		$fullFilenames = glob($dir.'*');
 		foreach($fullFilenames as $fullFilename){
 			$time = filemtime($fullFilename);
-			if( $time <= (time() - 3600 * 24)){
-				continue;//ignore older files
-			}
 			$result[] = array(
 				'file' => substr($fullFilename, strlen($docRoot)),
 				'date' => date ("d F H:i:s", $time),
