@@ -18,7 +18,7 @@ case "$1" in
   start)
     echo "Starting GuardDog"
     # run application you want to start
-    /home/pi/guard/GuardDog/build/GuardDog "/home/pi/guard/GuardDog" 5 1.7
+    /var/www/GuardDog/GuardDog/build/GuardDog "/var/www/GuardDog/GuardDog" 5 1.7
     ;;
   stop)
     echo "Stopping GuardDog"
