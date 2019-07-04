@@ -1,0 +1,3 @@
+[submodule "raspicam"]
+	path = raspicam
+	url = git@github.com:cedricve/raspicam.git
